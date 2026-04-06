@@ -1,21 +1,21 @@
-"use client"
-
-// 선택적으로 사용할 때는 default 안 씀
 export function fetchApi(url: string, options?: RequestInit) {
-    if (options?.body) {
-      const headers = new Headers(options.headers || {});
-      headers.set("Content-Type", "application/json");
-      options.headers = headers;
-      options.credentials = "include";
-    }
-  
-    return fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${url}`, options).then(
-      async (res) => {
-        if (!res.ok) {
-          const rsData = await res.json();
-          throw new Error(rsData.msg || "요청 실패");
-        }
-        return res.json();
+
+  options = options || {};
+  options.credentials = "include";
+
+  if (options?.body) {
+    const headers = new Headers(options.headers || {});
+    headers.set("Content-Type", "application/json");
+    options.headers = headers;
+  }
+
+  return fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}${url}`, options).then(
+    async (res) => {
+      if (!res.ok) {
+        const rsData = await res.json();
+        throw new Error(rsData.msg || "요청 실패");
       }
-    )
+      return res.json();
+    }
+  )
 }
