@@ -1,11 +1,12 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { PostCommentDto, PostDto } from "@/type/post";
 import { fetchApi } from "@/lib/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { AuthContext } from "@/app/ClientLayout";
 
 export default function Detail() {
 
@@ -39,6 +40,9 @@ export default function Detail() {
                 alert("삭제가 완료되었습니다.");
                 router.replace("/posts");
             })
+            .catch((err) => {
+                alert(err);
+            })
 
     }
 
@@ -53,26 +57,29 @@ export default function Detail() {
             setPostComments(
                 postComments.filter((postComment) => postComment.id !== commentId)
             );
+        }).catch((err) => {
+            alert(err);
         });
     };
 
     const onModifySuccess = (id: number, contentValue: string) => {
         if (postComments === null) return;
 
-        // 1번 방식
-        fetchApi(`/api/v1/posts/${postId}/comments`)
-            .then((rs) => {
-                setPostComments(rs);
-            })
+        // 1
+        // fetchApi(`/api/v1/posts/${postId}/comments`)
+        //     .then((rs) => {
+        //         console.log(rs);
+        //         setPostComments(rs);
+        //     })
 
-        // 2번 방식
-        // setPostComments(
-        //     postComments.map((postComment) =>
-        //         postComment.id === id
-        //             ? { ...postComment, content: contentValue }
-        //             : postComment
-        //     )
-        // );
+        // 2
+        setPostComments(
+            postComments.map((postComment) =>
+                postComment.id === id
+                    ? { ...postComment, content: contentValue }
+                    : postComment
+            )
+        );
     };
 
     const handleAddPostComment = (e: any) => {
@@ -107,9 +114,9 @@ export default function Detail() {
     return (
         <>
             {post === null
-                ? <div>로딩 중...</div>
+                ? <div>로딩중..</div>
                 : <div className="flex flex-col gap-8 items-center">
-                    <h1>{postId}번 글 상세 페이지</h1>
+                    <h1>{postId}번 글 상세페이지</h1>
                     <div>
                         <h1>{post.title}</h1>
                         <div>{post.content}</div>
@@ -117,13 +124,13 @@ export default function Detail() {
                     <div className="flex gap-4">
                         <Link
                             href={`/posts/${post.id}/edit`}
-                            className="border-1 rounded p-2 bg-blue-500 cursor-pointer">
+                            className="border-1 rounded p-2 bg-blue-500">
                             수정</Link>
                         <button
                             onClick={() => {
                                 onDeleteHandler(post.id);
                             }}
-                            className="border-1 rounded p-2 bg-red-500 cursor-pointer">삭제</button>
+                            className="border-1 rounded p-2 bg-red-500">삭제</button>
                     </div>
                     <PostCommentList
                         postId={post.id}
@@ -142,7 +149,7 @@ export default function Detail() {
                             className="border-2 p-2 rounded"
                             maxLength={100}
                         />
-                        <button type="submit" className="border-2 p-2 rounded cursor-pointer">
+                        <button type="submit" className="border-2 p-2 rounded">
                             저장
                         </button>
                     </form>
@@ -173,6 +180,7 @@ function PostCommentList({ postId, postComments, deletePostComment, onModifySucc
                         <PostCommentListItem
                             key={postComment.id}
                             postId={postId}
+                            authorId={postComment.id}
                             postComment={postComment}
                             deletePostComment={deletePostComment}
                             onModifySuccess={onModifySuccess}
@@ -184,14 +192,18 @@ function PostCommentList({ postId, postComments, deletePostComment, onModifySucc
     )
 }
 
-function PostCommentListItem({ postId, postComment, deletePostComment, onModifySuccess }: {
+function PostCommentListItem({ postId, authorId, postComment, deletePostComment, onModifySuccess }: {
     postId: number,
+    authorId: number,
     postComment: PostCommentDto,
     deletePostComment: (commentId: number) => void,
     onModifySuccess: (commentId: number, content: string) => void
 }) {
 
     const [modifyMode, setModifyMode] = useState(false);
+    const authState = use(AuthContext);
+    const loginedMember = authState?.loginMember;
+    const isMine = loginedMember?.id === authorId;
 
     const toggleModifyMode = () => {
         setModifyMode(!modifyMode);
@@ -210,13 +222,15 @@ function PostCommentListItem({ postId, postComment, deletePostComment, onModifyS
             alert(data.msg);
             toggleModifyMode();
             // 1번 방식 댓글 목록을 다시 가져온다.
-            //  -> 장점: 데이터 정합성 확보
-            //  -> 단점: 성능
+            //  - 장: 데이터 정합성.
+            //  - 단: 성능
             // 2번 방식 리액트 상태값을 변경
-            //  -> 장점: 빠르게 적용
-            //  -> 단점: DB와 UI 상태가 일치하지 않을 수 있음.
+            //  - 장: 빠르게 적용
+            //  - 단: db와 ui 상태가 일치 하지 않을 수 있음.
 
             onModifySuccess(postComment.id, contentValue);
+        }).catch((err) => {
+            alert(err);
         });
     };
 
@@ -231,23 +245,27 @@ function PostCommentListItem({ postId, postComment, deletePostComment, onModifyS
                         defaultValue={postComment.content}
                         className="border-2 p-2 rounded"
                     />
-                    <button className="border-2 p-2 rounded cursor-pointer" type="submit">
+                    <button className="border-2 p-2 rounded" type="submit">
                         저장
                     </button>
                 </form>
             )}
             {!modifyMode && <span>{postComment.content}</span>}
-            <button className="border-2 p-2 rounded cursor-pointer" onClick={toggleModifyMode}>
-                {modifyMode ? "수정취소" : "수정"}
-            </button>
-            <button
-                className="border-2 p-2 rounded cursor-pointer"
-                onClick={() => {
-                    deletePostComment(postComment.id);
-                }}
-            >
-                삭제
-            </button>
+            {isMine &&
+                <button className="border-2 p-2 rounded" onClick={toggleModifyMode}>
+                    {modifyMode ? "수정취소" : "수정"}
+                </button>
+            }
+            {isMine &&
+                <button
+                    className="border-2 p-2 rounded"
+                    onClick={() => {
+                        deletePostComment(postComment.id);
+                    }}
+                >
+                    삭제
+                </button>
+            }
         </li>
     )
 }
