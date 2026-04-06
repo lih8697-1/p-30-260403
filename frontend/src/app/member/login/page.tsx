@@ -1,11 +1,15 @@
 "use client";
 
+import { AuthContext } from "@/app/ClientLayout";
 import { fetchApi } from "@/lib/client";
 import { useRouter } from "next/navigation";
+import { use } from "react";
 
 export default function Login() {
 
     const router = useRouter();
+    const authState = use(AuthContext);
+    const getLoginMember = authState?.getLoginMember;
 
     const onSubmitHandler = (e: any) => {
         e.preventDefault();;
@@ -34,8 +38,14 @@ export default function Login() {
             })
         })
             .then(rs => {
-                alert(rs.msg);
-                router.replace(`/`)
+                if (getLoginMember !== undefined) {
+                    getLoginMember();
+                    alert(rs.msg);
+                    router.replace(`/`)
+                    return;
+                }
+
+                throw new Error("getLoingMember가 undefined입니다.");
             })
             .catch((errMsg) => {
                 alert(errMsg);
