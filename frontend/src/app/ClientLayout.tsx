@@ -1,80 +1,25 @@
 'use client';
-import { fetchApi, FetchCallbacks } from "@/lib/client";
+import { AuthProvider, useAuth } from "@/global/auth/hook/useAuth";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createContext, useEffect, useState } from "react";
-
-const AuthContext = createContext<ReturnType<typeof useAuth> | null>(null);
-
-function useAuth() {
-
-    const [loginMember, setLoginMember] = useState<MemberDto | null>(null);
-
-    const getLoginMember = (callbacks: FetchCallbacks) => {
-        fetchApi("/api/v1/members/me")
-            .then((memberDto) => {
-                setLoginMember(memberDto);
-                callbacks.onSuccess?.(memberDto);
-            })
-            .catch((err) => {
-                callbacks.onError?.(err);
-            });
-    }
-
-    const logout = (callbacks: FetchCallbacks) => {
-        confirm("로그아웃 하시겠습니까?") &&
-            fetchApi("/api/v1/members/logout", {
-                method: "DELETE",
-            })
-                .then((data) => {
-                    setLoginMember(null);
-                    alert(data.msg);
-                    callbacks.onSuccess?.(data);
-                })
-                .catch((rsData) => {
-                    alert(rsData.msg);
-                    callbacks.onError?.(rsData.msg);
-                });
-    };
-
-    return { loginMember, getLoginMember, logout };
-}
 
 export default function ClientLayout({ children }: {
     children: React.ReactNode;
 }) {
 
     const authState = useAuth();
-    const { loginMember, getLoginMember, logout: _logout } = useAuth();
+    const { loginMember, getLoginMember, logout } = useAuth();
     const isLogin = loginMember !== null;
     const router = useRouter();
 
     useEffect(() => {
-        getLoginMember({
-            onSuccess: (data) => {
-                console.log("data", data);
-            },
-            onError: (err) => {
-                console.log("err", err);
-            },
-        });
+        getLoginMember();
     }, []);
-
-    const logout = () => {
-        _logout({
-            onSuccess: (data) => {
-                alert(data.msg);
-                router.replace("/");
-            },
-            onError: (rsData) => {
-                alert(rsData.msg);
-            },
-        });
-    };
 
     return (
         <>
-            <AuthContext.Provider value={authState}>
+            <AuthProvider>
                 <header>
                     <nav className="flex gap-4">
                         <Link href="/">메인</Link>
@@ -88,7 +33,7 @@ export default function ClientLayout({ children }: {
                     {children}
                 </main>
                 <footer>푸터</footer>
-            </AuthContext.Provider>
+            </AuthProvider>
         </>
     )
 }
